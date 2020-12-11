@@ -10,12 +10,12 @@ pytest-runner = "*"
 fastparquet = "*"
 
 [packages]
-csci-utils = {editable = true,git = "https://github.com/csci-e-29/2020fa-csci-utils-mdiatchenko"}
 pandas = "*"
 sklearn = "*"
 tensorflow = "*"
 dask = {extras = ["dataframe"], version = "*"}
 s3fs = "*"
+luigi = "*"
 
 [requires]
 python_version = "3.7"
