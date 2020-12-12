@@ -1,5 +1,5 @@
 from luigi import build
-from .tasks import LoadData, LoadTest, FitNNModel, NNPredict, BackTest
+from .tasks import LoadData, LoadTest, FitNNModel, NNPredict, BackTest, NormalizationDenominators
 import argparse
 
 

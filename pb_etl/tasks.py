@@ -4,8 +4,9 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  # or any {'0', '1', '2'}
 
 import tensorflow as tf
 
-physical_devices = tf.config.list_physical_devices('GPU')
-tf.config.experimental.set_memory_growth(physical_devices[0], True)
+physical_devices = tf.config.list_physical_devices("GPU")
+if len(physical_devices) > 0:
+    tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
 from tensorflow.keras import layers
 from luigi import ExternalTask, LocalTarget, Task, Parameter
@@ -14,6 +15,8 @@ from pb_etl.luigi.task import Requirement, Requires, TargetOutput, SaltedOutput
 
 import pandas as pd
 from sklearn.model_selection import train_test_split
+from dask import dataframe as dd
+
 
 attr_type = {
     "TRANSACTION_ID": "int64",
@@ -87,14 +90,18 @@ class ExtData(ExternalTask):
 class TrnAttr(ExtData):
     data_source = "train/attr/"
 
+
 class TrnTscore(ExtData):
     data_source = "train/tscore/"
+
 
 class TstAttr(ExtData):
     data_source = "test/attr/"
 
+
 class TstTscore(ExtData):
     data_source = "test/tscore/"
+
 
 class BackTestRslt(ExtData):
     data_source = "results/"
@@ -119,23 +126,34 @@ class LoadData(Task):
     def run(self):
         trn_atr = (
             self.input()["S3TrnAttr"]
-                .read_dask(dtype=attr_type)
-                .set_index("TRANSACTION_ID")
+            .read_dask(dtype=attr_type)
+            .set_index("TRANSACTION_ID")
         )
         trn_ts = (
             self.input()["S3TrnTscore"]
-                .read_dask(dtype=ts_type)
-                .set_index("TRANSACTION_ID")
+            .read_dask(dtype=ts_type)
+            .set_index("TRANSACTION_ID")
         )
 
         trn = trn_atr.join(trn_ts)
-        # print(type(trn[attr_norm].max().compute()))
-
-        trn_max = pd.DataFrame(trn[attr_norm].max().compute())
-        trn_max.columns = ["max_val"]
-        trn_max.to_parquet("./data/trn_max.parquet.gzip", compression="gzip")
 
         self.output().write_dask(trn, compression="gzip")
+
+
+class NormalizationDenominators(Task):
+    __version__ = "0.0.0"
+
+    train_data = Requirement(LoadData)
+    requires = Requires()
+
+    output = SaltedOutput(target_class=lt.ParquetTarget, target_path="./data/trn_max")
+
+    def run(self):
+        trn = self.input().read_dask()
+        trn_max = pd.DataFrame(trn[attr_norm].max().compute())
+        trn_max.columns = ["max_val"]
+        trn_max_dask = dd.from_pandas(trn_max, npartitions=1)
+        self.output().write_dask(trn_max_dask, compression="gzip")
 
 
 class LoadTest(Task):
@@ -157,13 +175,13 @@ class LoadTest(Task):
     def run(self):
         tst_atr = (
             self.input()["S3TstAttr"]
-                .read_dask(dtype=attr_type)
-                .set_index("TRANSACTION_ID")
+            .read_dask(dtype=attr_type)
+            .set_index("TRANSACTION_ID")
         )
         tst_ts = (
             self.input()["S3TstTscore"]
-                .read_dask(dtype=ts_type)
-                .set_index("TRANSACTION_ID")
+            .read_dask(dtype=ts_type)
+            .set_index("TRANSACTION_ID")
         )
 
         tst = tst_atr.join(tst_ts)
@@ -174,16 +192,16 @@ class LoadTest(Task):
 class FitNNModel(Task):
     __version__ = "0.0.0"
     TheData = Requirement(LoadData)
+    MaxDenoms = Requirement(NormalizationDenominators)
     requires = Requires()
 
-    def output(self):
-        return LocalTarget(path="./data/repository/nn01")
+    output = SaltedOutput(target_class=LocalTarget, target_path="./data/repository/nn")
 
     def run(self):
 
-        trn = self.input().read_dask().compute()
+        trn = self.input()["TheData"].read_dask().compute()
 
-        df_max = pd.read_parquet("./data/trn_max.parquet.gzip")
+        df_max = self.input()["MaxDenoms"].read_dask().compute()
 
         for idx in df_max.index.values:
             trn[idx] = trn[idx] / df_max.loc[idx][0]
@@ -210,30 +228,34 @@ class FitNNModel(Task):
         train_ds = df_to_dataset(train)
         val_ds = df_to_dataset(val, shuffle=False)
 
-        tf.keras.backend.set_floatx('float64')
+        tf.keras.backend.set_floatx("float64")
 
-        model = tf.keras.Sequential([
-            feature_layer,
-            layers.Dense(1024, activation='relu'),
-            layers.Dropout(.2),
-            layers.Dense(512, activation='relu'),
-            layers.Dropout(.2),
-            layers.Dense(256, activation='relu'),
-            layers.Dropout(.2),
-            layers.Dense(128, activation='relu'),
-            layers.Dropout(.2),
-            layers.Dense(64, activation='relu'),
-            layers.Dropout(.1),
-            layers.Dense(32, activation='relu'),
-            layers.Dropout(.1),
-            layers.Dense(1, activation='sigmoid')
-        ])
+        model = tf.keras.Sequential(
+            [
+                feature_layer,
+                layers.Dense(1024, activation="relu"),
+                layers.Dropout(0.2),
+                layers.Dense(512, activation="relu"),
+                layers.Dropout(0.2),
+                layers.Dense(256, activation="relu"),
+                layers.Dropout(0.2),
+                layers.Dense(128, activation="relu"),
+                layers.Dropout(0.2),
+                layers.Dense(64, activation="relu"),
+                layers.Dropout(0.1),
+                layers.Dense(32, activation="relu"),
+                layers.Dropout(0.1),
+                layers.Dense(1, activation="sigmoid"),
+            ]
+        )
 
-        model.compile(optimizer='adam',
-                      loss=tf.keras.losses.BinaryCrossentropy(from_logits=False),
-                      metrics=['accuracy'])
+        model.compile(
+            optimizer="adam",
+            loss=tf.keras.losses.BinaryCrossentropy(from_logits=False),
+            metrics=["accuracy"],
+        )
 
-        nepochs = 10
+        nepochs = 1  # 10
 
         tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
@@ -241,15 +263,14 @@ class FitNNModel(Task):
 
         model.save(self.output().path)
 
+
 class NNPredict(Task):
     __version__ = "0.0.0"
     Data = Requirement(LoadTest)
+    MaxDenoms = Requirement(NormalizationDenominators)
     Model = Requirement(FitNNModel)
 
     requires = Requires()
-
-    # def output(self):
-    #     return LocalTarget(path="./data/result.parquet.gzip")
 
     output = SaltedOutput(target_class=lt.ParquetTarget, target_path="./data/result")
 
@@ -257,7 +278,7 @@ class NNPredict(Task):
 
         tst = self.input()["Data"].read_dask().compute()
 
-        df_max = pd.read_parquet("./data/trn_max.parquet.gzip")
+        df_max = self.input()["MaxDenoms"].read_dask().compute()
 
         for idx in df_max.index.values:
             tst[idx] = tst[idx] / df_max.loc[idx][0]
@@ -271,15 +292,13 @@ class NNPredict(Task):
 
         tst["Y_hat"] = y_test_hat
 
-        from dask import dataframe as dd
-
         rslt = pd.DataFrame(y_test_hat, index=tst.index.values)
         rslt.columns = ["Y_hat"]
         rslt.index.name = "TRANSACTION_ID"
 
-        dask_rslt = dd.from_pandas(rslt,npartitions=1)
+        dask_rslt = dd.from_pandas(rslt, npartitions=1)
 
-        self.output().write_dask(dask_rslt, compression='gzip')
+        self.output().write_dask(dask_rslt, compression="gzip")
 
 
 class BackTest(Task):
@@ -294,17 +313,15 @@ class BackTest(Task):
     def run(self):
         df_actl = (
             self.input()["actl"]
-                .read_dask(dtype={"TRANSACTION_ID": "int64","TARGET": "int64"})
-                .set_index("TRANSACTION_ID")
+            .read_dask(dtype={"TRANSACTION_ID": "int64", "TARGET": "int64"})
+            .set_index("TRANSACTION_ID")
         )
-        df_frcst = (
-            self.input()["frcst"]
-                .read_dask(dtype={"TRANSACTION_ID": "int64","Y_hat": "float64"})
+        df_frcst = self.input()["frcst"].read_dask(
+            dtype={"TRANSACTION_ID": "int64", "Y_hat": "float64"}
         )
 
         bcktst = df_actl.join(df_frcst)
 
-        print(bcktst.sum().compute())
+        ln = bcktst.count().compute()
 
-        #
-        # self.output().write_dask(bcktst, compression="gzip")
+        print(bcktst.sum().compute() / ln)
