@@ -224,6 +224,8 @@ class FitNNModel(Task):
             layers.Dropout(.2),
             layers.Dense(64, activation='relu'),
             layers.Dropout(.1),
+            layers.Dense(32, activation='relu'),
+            layers.Dropout(.1),
             layers.Dense(1, activation='sigmoid')
         ])
 
@@ -231,7 +233,7 @@ class FitNNModel(Task):
                       loss=tf.keras.losses.BinaryCrossentropy(from_logits=False),
                       metrics=['accuracy'])
 
-        nepochs = 1
+        nepochs = 10
 
         tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
@@ -246,8 +248,10 @@ class NNPredict(Task):
 
     requires = Requires()
 
-    def output(self):
-        return LocalTarget(path="./data/result.parquet.gzip")
+    # def output(self):
+    #     return LocalTarget(path="./data/result.parquet.gzip")
+
+    output = SaltedOutput(target_class=lt.ParquetTarget, target_path="./data/result")
 
     def run(self):
 
@@ -267,11 +271,15 @@ class NNPredict(Task):
 
         tst["Y_hat"] = y_test_hat
 
+        from dask import dataframe as dd
+
         rslt = pd.DataFrame(y_test_hat, index=tst.index.values)
         rslt.columns = ["Y_hat"]
+        rslt.index.name = "TRANSACTION_ID"
 
-        rslt.to_parquet(self.output().path,compression='gzip')
+        dask_rslt = dd.from_pandas(rslt,npartitions=1)
 
+        self.output().write_dask(dask_rslt, compression='gzip')
 
 
 class BackTest(Task):
@@ -284,17 +292,19 @@ class BackTest(Task):
         return LocalTarget(path="./data/backtest.parquet.gzip")
 
     def run(self):
-        ts_actl = (
-            self.input()["S3TstAttr"]
-                .read_dask(dtype=attr_type)
+        df_actl = (
+            self.input()["actl"]
+                .read_dask(dtype={"TRANSACTION_ID": "int64","TARGET": "int64"})
                 .set_index("TRANSACTION_ID")
         )
-        tst_ts = (
-            self.input()["S3TstTscore"]
-                .read_dask(dtype=ts_type)
-                .set_index("TRANSACTION_ID")
+        df_frcst = (
+            self.input()["frcst"]
+                .read_dask(dtype={"TRANSACTION_ID": "int64","Y_hat": "float64"})
         )
 
-        tst = tst_atr.join(tst_ts)
+        bcktst = df_actl.join(df_frcst)
 
-        self.output().write_dask(tst, compression="gzip")
+        print(bcktst.sum().compute())
+
+        #
+        # self.output().write_dask(bcktst, compression="gzip")
