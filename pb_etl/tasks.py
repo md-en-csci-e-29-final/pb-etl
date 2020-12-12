@@ -255,11 +255,24 @@ class FitNNModel(Task):
             metrics=["accuracy"],
         )
 
-        nepochs = 1  # 10
+        nepochs = 2  # 10
 
         tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
         history = model.fit(train_ds, validation_data=val_ds, epochs=nepochs, verbose=0)
+
+        print(type(history))
+
+        import json
+        # Get the dictionary containing each metric and the loss for each epoch
+        history_dict = history.history
+        # Save it under the form of a json file
+
+        os.makedirs("./data/repository")
+        with open("./data/repository/model_hist_params", 'w') as opened_file:
+            json.dump(history_dict, opened_file)
+
+
 
         model.save(self.output().path)
 
@@ -307,8 +320,7 @@ class BackTest(Task):
     frcst = Requirement(NNPredict)
     requires = Requires()
 
-    def output(self):
-        return LocalTarget(path="./data/backtest.parquet.gzip")
+    output = SaltedOutput(target_class=lt.ParquetTarget, target_path="./data/repository/backtest")
 
     def run(self):
         df_actl = (
@@ -325,3 +337,5 @@ class BackTest(Task):
         ln = bcktst.count().compute()
 
         print(bcktst.sum().compute() / ln)
+
+        self.output().write_dask(bcktst, compression="gzip")
