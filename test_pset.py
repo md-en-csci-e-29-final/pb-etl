@@ -11,5 +11,5 @@ class FakeFileFailure(IOError):
 
 
 class TestsStub(TestCase):
-    def basic_test_1(self):
+    def test_1(self):
         pass

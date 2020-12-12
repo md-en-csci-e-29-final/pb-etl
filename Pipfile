@@ -6,14 +6,16 @@ verify_ssl = true
 [dev-packages]
 pytest = "*"
 pytest-cov = "*"
+pytest-runner = "*"
+fastparquet = "*"
 
 [packages]
-awscli = "*"
 pandas = "*"
-xlrd = "*"
-pyarrow = "*"
-csci-utils = {editable = true,git = "https://github.com/csci-e-29/2020fa-csci-utils-evgenynenashev"}
-
+sklearn = "*"
+tensorflow = "*"
+dask = {extras = ["dataframe"], version = "*"}
+s3fs = "*"
+luigi = "*"
 
 [requires]
 python_version = "3.7"
