@@ -154,12 +154,10 @@ class NormalizationDenominators(Task):
 class LoadTest(Task):
     __version__ = "0.0.0"
 
-    S3TstAttr = Requirement(TstAttr)
     S3TstTscore = Requirement(TstTscore)
-
-    requires = Requires()
-
     output = SaltedOutput(target_class=lt.ParquetTarget, target_path="./data/testdata")
+    S3TstAttr = Requirement(TstAttr)
+    requires = Requires()
 
     def run(self):
         tst_atr = (
