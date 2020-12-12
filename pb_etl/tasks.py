@@ -334,8 +334,26 @@ class BackTest(Task):
 
         bcktst = df_actl.join(df_frcst)
 
+        self.output().write_dask(bcktst, compression="gzip")
+
+
+class FinalResults(Task):
+    back_tests = Requirement(BackTest)
+    requires = Requires()
+
+    def run(self):
+        bcktst = self.input().read_dask()
         ln = bcktst.count().compute()
 
+        print ("=== FINAL RESULTS ===")
+        print("=== Real Deletion Rate (TARGET) ===")
+        print("=== Forecasted deletion rate (Y_hat) ===")
         print(bcktst.sum().compute() / ln)
+        print("==============================")
 
-        self.output().write_dask(bcktst, compression="gzip")
+
+
+
+
+
+

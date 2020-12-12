@@ -1,5 +1,5 @@
 from luigi import build
-from .tasks import LoadData, LoadTest, FitNNModel, NNPredict, BackTest, NormalizationDenominators
+from .tasks import LoadData, LoadTest, FitNNModel, NNPredict, BackTest, NormalizationDenominators, FinalResults
 import argparse
 
 
@@ -11,6 +11,6 @@ def main():
     args = parser.parse_args()
     # LoadData(), LoadTest(),
     build(
-        [BackTest()],
+        [FinalResults()],
         local_scheduler=True,
     )
