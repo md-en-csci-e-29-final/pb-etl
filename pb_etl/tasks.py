@@ -3,8 +3,12 @@ import os
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  # or any {'0', '1', '2'}
 
 import tensorflow as tf
+
+physical_devices = tf.config.list_physical_devices('GPU')
+tf.config.experimental.set_memory_growth(physical_devices[0], True)
+
 from tensorflow.keras import layers
-from luigi import ExternalTask, BoolParameter, Task, Parameter
+from luigi import ExternalTask, LocalTarget, Task, Parameter
 import pb_etl.luigi.dask.target as lt
 from pb_etl.luigi.task import Requirement, Requires, TargetOutput, SaltedOutput
 
@@ -167,42 +171,19 @@ class LoadTest(Task):
         self.output().write_dask(tst, compression="gzip")
 
 
-class BySomething(Task):
-    __version__ = "0.0.0"
-
-    ByWhat = Parameter()
-    subset = BoolParameter(default=True)
-
-    # Be sure to read from CleanedReviews locally
-
-    TheData = Requirement(LoadData)
-    requires = Requires()
-
-    output = SaltedOutput(target_class=lt.ParquetTarget, target_path="./yelp_result")
-
-    # output = TargetOutput(target_class=lt.ParquetTarget,target_path='./yelp_result')
-
-    def run(self):
-        ddf = self.input().read_dask()
-        res = ddf[["lenn", self.ByWhat]].groupby(self.ByWhat).mean()
-        self.output().write_dask(res, compression="gzip")
-
-        self.print_results()
-
-    def print_results(self):
-        print(self.output().read_dask().compute())
-
-
-class FitModel(Task):
+class FitNNModel(Task):
     __version__ = "0.0.0"
     TheData = Requirement(LoadData)
     requires = Requires()
 
-    def run(self):
+    def output(self):
+        return LocalTarget(path="./data/repository/nn01")
 
-        df_max = pd.read_parquet("./data/trn_max.parquet")
+    def run(self):
 
         trn = self.input().read_dask().compute()
+
+        df_max = pd.read_parquet("./data/trn_max.parquet")
 
         for idx in df_max.index.values:
             trn[idx] = trn[idx] / df_max.loc[idx][0]
@@ -250,6 +231,24 @@ class FitModel(Task):
                       loss=tf.keras.losses.BinaryCrossentropy(from_logits=False),
                       metrics=['accuracy'])
 
-        nepochs = 10
+        nepochs = 1
 
-        history = model.fit(train_ds, validation_data=val_ds, epochs=nepochs, verbose=1);
+        tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
+
+        history = model.fit(train_ds, validation_data=val_ds, epochs=nepochs, verbose=0)
+
+        model.save(self.output().path)
+
+class NNPredict(Task):
+    __version__ = "0.0.0"
+    Data = Requirement(LoadTest)
+    Model = Requirement(FitNNModel)
+
+    requires = Requires()
+
+    def run(self):
+        # model = tf.keras.models.load_model(self.input()["Model"].path)
+
+        print(self.input()["Model"].path)
+
+        # model = tf.keras.models.load_model(r"data/repository/nn01")
