@@ -15,6 +15,7 @@ sklearn = "*"
 tensorflow = "*"
 dask = {extras = ["dataframe"], version = "*"}
 s3fs = "*"
+luigi = "*"
 
 [requires]
 python_version = "3.7"
