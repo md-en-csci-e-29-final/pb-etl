@@ -55,7 +55,8 @@ cat_col = [
 ]
 num_col = attr_norm.copy()
 num_col.extend(["NS_V0", "NS_V1", "NS_V2"])
-s3_source = "s3://md-en-csci-e-29-final/"
+s3_source_default = "s3://md-en-csci-e-29-final/"
+src_data_path = os.getenv("FINAL_PROJ_BUCKET", default=s3_source_default)
 
 
 def df_to_dataset(dataframe, shuffle=True, batch_size=32):
@@ -82,7 +83,7 @@ class ExtData(ExternalTask):
     def output(self):
         pth = os.getenv(
             "PSET5_PATH",
-            default=s3_source + self.data_source,
+            default=src_data_path + self.data_source,
         )
         return lt.CSVTarget(pth, storage_options=dict(requester_pays=True), flag=None)
 
@@ -260,8 +261,6 @@ class FitNNModel(Task):
         tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
         history = model.fit(train_ds, validation_data=val_ds, epochs=nepochs, verbose=0)
-
-        print(type(history))
 
         import json
         # Get the dictionary containing each metric and the loss for each epoch
