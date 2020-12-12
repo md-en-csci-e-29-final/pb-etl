@@ -7,7 +7,6 @@ verify_ssl = true
 pytest = "*"
 pytest-cov = "*"
 pytest-runner = "*"
-fastparquet = "*"
 
 [packages]
 pandas = "*"
@@ -16,6 +15,7 @@ tensorflow = "*"
 dask = {extras = ["dataframe"], version = "*"}
 s3fs = "*"
 luigi = "*"
+fastparquet = "*"
 
 [requires]
 python_version = "3.7"
