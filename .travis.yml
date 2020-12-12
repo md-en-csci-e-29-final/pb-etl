@@ -14,7 +14,8 @@ install:
 - pipenv install --system --deploy --ignore-pipfile
 
 stages:
-  - test
+  - name: test
+    if: branch = master
   - name: answers
     if: branch = master
 
