@@ -160,14 +160,14 @@ class LoadTest(Task):
     requires = Requires()
 
     def run(self):
-        tst_atr = (
-            self.input()["S3TstAttr"]
-            .read_dask(dtype=attr_type)
-            .set_index("TRANSACTION_ID")
-        )
         tst_ts = (
             self.input()["S3TstTscore"]
             .read_dask(dtype=ts_type)
+            .set_index("TRANSACTION_ID")
+        )
+        tst_atr = (
+            self.input()["S3TstAttr"]
+            .read_dask(dtype=attr_type)
             .set_index("TRANSACTION_ID")
         )
 
