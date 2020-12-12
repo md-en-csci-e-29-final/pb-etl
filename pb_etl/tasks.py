@@ -111,12 +111,6 @@ class BackTestRslt(ExtData):
 class LoadData(Task):
     __version__ = "0.0.0"
 
-    # subset = BoolParameter(default=True)
-
-    # Output should be a local ParquetTarget in ./data, ideally a salted output,
-    # and with the subset parameter either reflected via salted output or
-    # as part of the directory structure
-
     S3TrnAttr = Requirement(TrnAttr)
     S3TrnTscore = Requirement(TrnTscore)
 
@@ -160,12 +154,6 @@ class NormalizationDenominators(Task):
 class LoadTest(Task):
     __version__ = "0.0.0"
 
-    # subset = BoolParameter(default=True)
-
-    # Output should be a local ParquetTarget in ./data, ideally a salted output,
-    # and with the subset parameter either reflected via salted output or
-    # as part of the directory structure
-
     S3TstAttr = Requirement(TstAttr)
     S3TstTscore = Requirement(TstTscore)
 
@@ -190,6 +178,12 @@ class LoadTest(Task):
         self.output().write_dask(tst, compression="gzip")
 
 
+def the_norm(df, max_val_df):
+    for idx in max_val_df.index.values:
+        df[idx] = df[idx] / max_val_df.loc[idx][0]
+    return df
+
+
 class FitNNModel(Task):
     __version__ = "0.0.0"
     TheData = Requirement(LoadData)
@@ -204,8 +198,7 @@ class FitNNModel(Task):
 
         df_max = self.input()["MaxDenoms"].read_dask().compute()
 
-        for idx in df_max.index.values:
-            trn[idx] = trn[idx] / df_max.loc[idx][0]
+        trn = the_norm(trn, df_max)
 
         feature_columns = []
 
@@ -263,15 +256,14 @@ class FitNNModel(Task):
         history = model.fit(train_ds, validation_data=val_ds, epochs=nepochs, verbose=0)
 
         import json
+
         # Get the dictionary containing each metric and the loss for each epoch
         history_dict = history.history
         # Save it under the form of a json file
 
         os.makedirs("./data/repository")
-        with open("./data/repository/model_hist_params", 'w') as opened_file:
+        with open("./data/repository/model_hist_params", "w") as opened_file:
             json.dump(history_dict, opened_file)
-
-
 
         model.save(self.output().path)
 
@@ -292,8 +284,7 @@ class NNPredict(Task):
 
         df_max = self.input()["MaxDenoms"].read_dask().compute()
 
-        for idx in df_max.index.values:
-            tst[idx] = tst[idx] / df_max.loc[idx][0]
+        tst = the_norm(tst, df_max)
 
         tst_dd = tf.data.Dataset.from_tensor_slices(dict(tst))
         tst_dd = tst_dd.batch(32)
@@ -319,7 +310,9 @@ class BackTest(Task):
     frcst = Requirement(NNPredict)
     requires = Requires()
 
-    output = SaltedOutput(target_class=lt.ParquetTarget, target_path="./data/repository/backtest")
+    output = SaltedOutput(
+        target_class=lt.ParquetTarget, target_path="./data/repository/backtest"
+    )
 
     def run(self):
         df_actl = (
@@ -344,15 +337,8 @@ class FinalResults(Task):
         bcktst = self.input().read_dask()
         ln = bcktst.count().compute()
 
-        print ("=== FINAL RESULTS ===")
+        print("=== FINAL RESULTS ===")
         print("=== Real Deletion Rate (TARGET) ===")
         print("=== Forecasted deletion rate (Y_hat) ===")
         print(bcktst.sum().compute() / ln)
         print("==============================")
-
-
-
-
-
-
-
