@@ -4,8 +4,9 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  # or any {'0', '1', '2'}
 
 import tensorflow as tf
 
-physical_devices = tf.config.list_physical_devices('GPU')
-tf.config.experimental.set_memory_growth(physical_devices[0], True)
+physical_devices = tf.config.list_physical_devices("GPU")
+if len(physical_devices) > 0:
+    tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
 from tensorflow.keras import layers
 from luigi import ExternalTask, LocalTarget, Task, Parameter
@@ -87,14 +88,18 @@ class ExtData(ExternalTask):
 class TrnAttr(ExtData):
     data_source = "train/attr/"
 
+
 class TrnTscore(ExtData):
     data_source = "train/tscore/"
+
 
 class TstAttr(ExtData):
     data_source = "test/attr/"
 
+
 class TstTscore(ExtData):
     data_source = "test/tscore/"
+
 
 class BackTestRslt(ExtData):
     data_source = "results/"
@@ -119,13 +124,13 @@ class LoadData(Task):
     def run(self):
         trn_atr = (
             self.input()["S3TrnAttr"]
-                .read_dask(dtype=attr_type)
-                .set_index("TRANSACTION_ID")
+            .read_dask(dtype=attr_type)
+            .set_index("TRANSACTION_ID")
         )
         trn_ts = (
             self.input()["S3TrnTscore"]
-                .read_dask(dtype=ts_type)
-                .set_index("TRANSACTION_ID")
+            .read_dask(dtype=ts_type)
+            .set_index("TRANSACTION_ID")
         )
 
         trn = trn_atr.join(trn_ts)
@@ -136,6 +141,24 @@ class LoadData(Task):
         trn_max.to_parquet("./data/trn_max.parquet.gzip", compression="gzip")
 
         self.output().write_dask(trn, compression="gzip")
+
+
+# class NormalizationDenominators(Task):
+#     __version__ = "0.0.0"
+#
+#     train_data = Requirement(LoadData)
+#     requires = Requires()
+#
+#     output = SaltedOutput(target_class=lt.ParquetTarget, target_path="./data/trn_max")
+#
+#     def run(self):
+#         trn_max = pd.DataFrame(self.input()[attr_norm].max().compute())
+#         trn_max.columns = ["max_val"]
+#         trn_max.to_parquet("./data/trn_max.parquet.gzip", compression="gzip")
+#
+#         //self.output().write_dask(trn, compression="gzip")
+#
+
 
 
 class LoadTest(Task):
@@ -157,13 +180,13 @@ class LoadTest(Task):
     def run(self):
         tst_atr = (
             self.input()["S3TstAttr"]
-                .read_dask(dtype=attr_type)
-                .set_index("TRANSACTION_ID")
+            .read_dask(dtype=attr_type)
+            .set_index("TRANSACTION_ID")
         )
         tst_ts = (
             self.input()["S3TstTscore"]
-                .read_dask(dtype=ts_type)
-                .set_index("TRANSACTION_ID")
+            .read_dask(dtype=ts_type)
+            .set_index("TRANSACTION_ID")
         )
 
         tst = tst_atr.join(tst_ts)
@@ -176,8 +199,10 @@ class FitNNModel(Task):
     TheData = Requirement(LoadData)
     requires = Requires()
 
-    def output(self):
-        return LocalTarget(path="./data/repository/nn01")
+    output = SaltedOutput(target_class=LocalTarget, target_path="./data/repository/nn01")
+
+    # def output(self):
+    #     return LocalTarget(path="./data/repository/nn01")
 
     def run(self):
 
@@ -210,26 +235,30 @@ class FitNNModel(Task):
         train_ds = df_to_dataset(train)
         val_ds = df_to_dataset(val, shuffle=False)
 
-        tf.keras.backend.set_floatx('float64')
+        tf.keras.backend.set_floatx("float64")
 
-        model = tf.keras.Sequential([
-            feature_layer,
-            layers.Dense(1024, activation='relu'),
-            layers.Dropout(.2),
-            layers.Dense(512, activation='relu'),
-            layers.Dropout(.2),
-            layers.Dense(256, activation='relu'),
-            layers.Dropout(.2),
-            layers.Dense(128, activation='relu'),
-            layers.Dropout(.2),
-            layers.Dense(64, activation='relu'),
-            layers.Dropout(.1),
-            layers.Dense(1, activation='sigmoid')
-        ])
+        model = tf.keras.Sequential(
+            [
+                feature_layer,
+                layers.Dense(1024, activation="relu"),
+                layers.Dropout(0.2),
+                layers.Dense(512, activation="relu"),
+                layers.Dropout(0.2),
+                layers.Dense(256, activation="relu"),
+                layers.Dropout(0.2),
+                layers.Dense(128, activation="relu"),
+                layers.Dropout(0.2),
+                layers.Dense(64, activation="relu"),
+                layers.Dropout(0.1),
+                layers.Dense(1, activation="sigmoid"),
+            ]
+        )
 
-        model.compile(optimizer='adam',
-                      loss=tf.keras.losses.BinaryCrossentropy(from_logits=False),
-                      metrics=['accuracy'])
+        model.compile(
+            optimizer="adam",
+            loss=tf.keras.losses.BinaryCrossentropy(from_logits=False),
+            metrics=["accuracy"],
+        )
 
         nepochs = 1
 
@@ -238,6 +267,7 @@ class FitNNModel(Task):
         history = model.fit(train_ds, validation_data=val_ds, epochs=nepochs, verbose=0)
 
         model.save(self.output().path)
+
 
 class NNPredict(Task):
     __version__ = "0.0.0"
@@ -270,8 +300,7 @@ class NNPredict(Task):
         rslt = pd.DataFrame(y_test_hat, index=tst.index.values)
         rslt.columns = ["Y_hat"]
 
-        rslt.to_parquet(self.output().path,compression='gzip')
-
+        rslt.to_parquet(self.output().path, compression="gzip")
 
 
 # class BackTest(Task):
