@@ -87,17 +87,17 @@ class ExtData(ExternalTask):
 class TrnAttr(ExtData):
     data_source = "train/attr/"
 
-
 class TrnTscore(ExtData):
     data_source = "train/tscore/"
-
 
 class TstAttr(ExtData):
     data_source = "test/attr/"
 
-
 class TstTscore(ExtData):
     data_source = "test/tscore/"
+
+class BackTestRslt(ExtData):
+    data_source = "results/"
 
 
 class LoadData(Task):
@@ -133,7 +133,7 @@ class LoadData(Task):
 
         trn_max = pd.DataFrame(trn[attr_norm].max().compute())
         trn_max.columns = ["max_val"]
-        trn_max.to_parquet("./data/trn_max.parquet", compression="gzip")
+        trn_max.to_parquet("./data/trn_max.parquet.gzip", compression="gzip")
 
         self.output().write_dask(trn, compression="gzip")
 
@@ -183,7 +183,7 @@ class FitNNModel(Task):
 
         trn = self.input().read_dask().compute()
 
-        df_max = pd.read_parquet("./data/trn_max.parquet")
+        df_max = pd.read_parquet("./data/trn_max.parquet.gzip")
 
         for idx in df_max.index.values:
             trn[idx] = trn[idx] / df_max.loc[idx][0]
@@ -246,9 +246,55 @@ class NNPredict(Task):
 
     requires = Requires()
 
+    def output(self):
+        return LocalTarget(path="./data/result.parquet.gzip")
+
     def run(self):
-        # model = tf.keras.models.load_model(self.input()["Model"].path)
 
-        print(self.input()["Model"].path)
+        tst = self.input()["Data"].read_dask().compute()
 
-        # model = tf.keras.models.load_model(r"data/repository/nn01")
+        df_max = pd.read_parquet("./data/trn_max.parquet.gzip")
+
+        for idx in df_max.index.values:
+            tst[idx] = tst[idx] / df_max.loc[idx][0]
+
+        tst_dd = tf.data.Dataset.from_tensor_slices(dict(tst))
+        tst_dd = tst_dd.batch(32)
+
+        model = tf.keras.models.load_model(self.input()["Model"].path)
+        tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
+        y_test_hat = model.predict(tst_dd, verbose=0)
+
+        tst["Y_hat"] = y_test_hat
+
+        rslt = pd.DataFrame(y_test_hat, index=tst.index.values)
+        rslt.columns = ["Y_hat"]
+
+        rslt.to_parquet(self.output().path,compression='gzip')
+
+
+
+class BackTest(Task):
+    __version__ = "0.0.0"
+    actl = Requirement(BackTestRslt)
+    frcst = Requirement(NNPredict)
+    requires = Requires()
+
+    def output(self):
+        return LocalTarget(path="./data/backtest.parquet.gzip")
+
+    def run(self):
+        ts_actl = (
+            self.input()["S3TstAttr"]
+                .read_dask(dtype=attr_type)
+                .set_index("TRANSACTION_ID")
+        )
+        tst_ts = (
+            self.input()["S3TstTscore"]
+                .read_dask(dtype=ts_type)
+                .set_index("TRANSACTION_ID")
+        )
+
+        tst = tst_atr.join(tst_ts)
+
+        self.output().write_dask(tst, compression="gzip")
