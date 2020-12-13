@@ -55,8 +55,6 @@ cat_col = [
 ]
 num_col = attr_norm.copy()
 num_col.extend(["NS_V0", "NS_V1", "NS_V2"])
-# s3_source_default = "s3://md-en-csci-e-29-final/"
-# src_data_path = os.getenv("FINAL_PROJ_BUCKET", default=s3_source_default)
 
 
 def df_to_dataset(dataframe, shuffle=True, batch_size=32):
@@ -83,12 +81,8 @@ class ExtData(ExternalTask):
     def output(self):
         src_data_path_default = "s3://md-en-csci-e-29-final/"
         src_data_path = os.getenv("FINAL_PROJ_BUCKET" , default=src_data_path_default)
-        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!src_data_path: " + src_data_path + self.data_source)
 
-        # pth = os.getenv(
-        #     "PSET5_PATH",
-        #     default=self.src_data_path + self.data_source,
-        # )
+
         return lt.CSVTarget(src_data_path + self.data_source, storage_options=dict(requester_pays=True), flag=None)
 
 
@@ -123,11 +117,13 @@ class LoadData(Task):
     output = SaltedOutput(target_class=lt.ParquetTarget, target_path="./data/traindata")
 
     def run(self):
+
         trn_atr = (
             self.input()["S3TrnAttr"]
             .read_dask(dtype=attr_type)
             .set_index("TRANSACTION_ID")
         )
+
         trn_ts = (
             self.input()["S3TrnTscore"]
             .read_dask(dtype=ts_type)
