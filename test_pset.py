@@ -95,19 +95,19 @@ def fake_data():
         "TARGET": [0, 0, 0],
     }
 
-    fake_train_df = pd.DataFrame(pb_etl_fake_train).set_index("TRANSACTION_ID")
+    fake_train_df = pd.DataFrame(pb_etl_fake_train)#.set_index("TRANSACTION_ID")
     # fake_train_daskdf = dd.from_pandas(fake_train_df, npartitions=1)
 
-    fake_train_ts_df = pd.DataFrame(pb_etl_fake_train_ts).set_index("TRANSACTION_ID")
+    fake_train_ts_df = pd.DataFrame(pb_etl_fake_train_ts)#.set_index("TRANSACTION_ID")
     # fake_train_ts_daskdf = dd.from_pandas(fake_train_ts_df, npartitions=1)
 
-    fake_test_df = pd.DataFrame(pb_etl_fake_test).set_index("TRANSACTION_ID")
+    fake_test_df = pd.DataFrame(pb_etl_fake_test)#.set_index("TRANSACTION_ID")
     # fake_test_daskdf = dd.from_pandas(fake_test_df, npartitions=1)
 
-    fake_test_ts_df = pd.DataFrame(pb_etl_fake_test_ts).set_index("TRANSACTION_ID")
+    fake_test_ts_df = pd.DataFrame(pb_etl_fake_test_ts)#.set_index("TRANSACTION_ID")
     # fake_test_ts_daskdf = dd.from_pandas(fake_test_ts_df, npartitions=1)
 
-    fake_results_df = pd.DataFrame(pb_etl_fake_results).set_index("TRANSACTION_ID")
+    fake_results_df = pd.DataFrame(pb_etl_fake_results)#.set_index("TRANSACTION_ID")
     # fake_results_daskdf = dd.from_pandas(fake_results_df, npartitions=1)
 
     return {
@@ -141,19 +141,23 @@ class LuigiTester(TestCase):
             fake_reviews = fake_data()
             for key in fake_reviews:
 
-                f = os.path.join(temp_dir, key + ".csv")
+                f = os.path.join(temp_dir, key + "_0.csv")
                 os.makedirs(os.path.dirname(f))
-                fake_reviews[key].to_csv(f, index=0)
 
+                print(fake_reviews[key])
+
+                fake_reviews[key].to_csv(f, index=False)
+                os.system("cat " + f)
 
             # because of an issue with moto
             # substituting S3 path with local path via environment variable
-            # os.environ["FINAL_PROJ_BUCKET"] = temp_dir + "/"
+            os.environ["FINAL_PROJ_BUCKET"] = temp_dir + "/"
             print(os.listdir(temp_dir))
+            print(os.listdir(temp_dir+"/results"))
+            print(os.listdir(temp_dir + "/train/attr"))
 
             # print("==============")
             # print(os.getcwd())
-
 
             l_res = LoadData()
 
@@ -161,25 +165,75 @@ class LuigiTester(TestCase):
                 [l_res],
                 local_scheduler=True
             )
-            print(os.listdir(temp_dir))
-            print("l_res.output :" + l_res.output().path)
+            #print(os.listdir(temp_dir))
+            #print("l_res.output :" + l_res.output().path)
+            #print(os.listdir(l_res.output().path))
+            print("+++++++++++++++++++++++++++++++++")
+            print(l_res.input())
+            #print(os.listdir(l_res.input()))
             self.assertTrue(l_res.output().exists())
 
-            os.chdir(curr_dir)
 
-            # t_res = LoadTest()
-            #
-            # build(
-            #     [t_res],
-            #     local_scheduler=True
-            # )
-            # print(os.listdir(temp_dir))
-            #
-            # print(t_res.output().path)
-            # print(t_res.output().exists())
-            #
-            # print(os.listdir(t_res.output().path))
-            # self.assertTrue(t_res.output().exists())
+
+            # raise ValueError
+
+            t_res = LoadTest()
+
+            build(
+                [t_res],
+                local_scheduler=True
+            )
+            print(os.listdir(temp_dir))
+
+            print(t_res.output().path)
+            print(t_res.output().exists())
+
+            print(os.listdir(t_res.output().path))
+            self.assertTrue(t_res.output().exists())
+
+            norm_res = NormalizationDenominators()
+
+            build(
+                [norm_res],
+                local_scheduler=True
+            )
+            self.assertTrue(norm_res.output().exists())
+
+            fit_res = FitNNModel()
+
+            build(
+                [fit_res],
+                local_scheduler=True
+            )
+            self.assertTrue(fit_res.output().exists())
+
+            norm_res = NormalizationDenominators()
+
+            build(
+                [norm_res],
+                local_scheduler=True
+            )
+            self.assertTrue(norm_res.output().exists())
+
+            pred_res = NNPredict()
+
+            build(
+                [pred_res],
+                local_scheduler=True
+            )
+            self.assertTrue(pred_res.output().exists())
+
+            bck_test_res = BackTest()
+
+            build(
+                [bck_test_res],
+                local_scheduler=True
+            )
+            self.assertTrue(bck_test_res.output().exists())
+
+
+
+            os.chdir(curr_dir)
 
     # def tearDown(self):
     #
