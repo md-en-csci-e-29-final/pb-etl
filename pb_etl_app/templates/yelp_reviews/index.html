@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!--
+    Load the CoreAPI library and the API schema.
+
+    /static/rest_framework/js/coreapi-0.1.1.js
+    /docs/schema.js
+-->
+{% load static %}
+<script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+<script src="https://cdn.jsdelivr.net/npm/vega-lite@3"></script>
+<script src="https://cdn.jsdelivr.net/npm/vega-embed@3"></script>
+<script src="{% static 'rest_framework/js/coreapi-0.1.1.js' %}"></script>
+<script src="{% url 'api-docs:schema-js' %}"></script>
+<script type="text/javascript">
+const coreapi = window.coreapi
+const schema = window.schema
+var client = new coreapi.Client()
+
+client.action(schema, ["by_year", "list"]).then(function(result) {
+    // Return value is in 'result'
+
+    console.log("Result", result);
+
+    vegaEmbed('#vis-d-1', {
+        "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
+        "data": {
+            "values": result.results,
+        },
+        "width": 400,
+        "height": 250,
+
+        "encoding": {
+            "x": {
+                "type": "quantitative",
+                "title": "Year",
+            },
+            "y": {
+                "title": "CO2 concentration in ppm",
+                "type": "quantitative",
+                "scale": {"zero": false}
+            },
+            "color": {
+                "field": "the_type",
+                "type": "ordinal",
+                "scale": {"scheme": "magma"},
+                "legend": null
+            }
+        },
+
+        "layer": [
+            {
+                "mark": "line",
+                "encoding": {
+                    "x": {"field": "date__year","type": "quantitative","axis":{"format": "d"}, "title":"year"},
+                    "y": {"field": "avg_cool", "type": "quantitative", "title":"Average Cool"}
+                }
+            },
+        ],
+        "config": {"text": {"align": "left", "dx": 3, "dy": 1}}
+    });
+})
+
+client.action(schema, ["by_year", "list"]).then(function(result) {
+    // Return value is in 'result'
+
+    console.log("Result", result);
+
+    vegaEmbed('#vis-d-2', {
+        "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
+        "data": {
+            "values": result.results,
+        },
+        "width": 400,
+        "height": 250,
+
+        "encoding": {
+            "x": {
+                "type": "quantitative",
+                "title": "Year",
+            },
+            "y": {
+                "title": "CO2 concentration in ppm",
+                "type": "quantitative",
+                "scale": {"zero": false}
+            },
+            "color": {
+                "field": "the_type",
+                "type": "ordinal",
+                "scale": {"scheme": "magma"},
+                "legend": null
+            }
+        },
+
+        "layer": [
+            {
+                "mark": "line",
+                "encoding": {
+                    "x": {"field": "date__year","type": "quantitative","axis":{"format": "d"}, "title":"year"},
+                    "y": {"field": "avg_stars", "type": "quantitative", "title":"Average Stars","color":"blue"},
+                }
+            }
+        ],
+        "config": {"text": {"align": "left", "dx": 3, "dy": 1}}
+    });
+})
+
+
+
+client.action(schema, ["by_holiday", "list"]).then(function(result) {
+    // Return value is in 'result'
+
+    console.log("Result",result);
+
+    vegaEmbed('#vis-h-1', {
+      "$schema": "https://vega.github.io/schema/vega-lite/v3.json",
+      "description": "Average stats per Holiday",
+      "width": 500, "height": 250,
+      "data": {
+         "values": result.results,
+      },
+ "mark": "bar",
+  "encoding": {
+    "x": {"field": "is_holiday", "type": "nominal", "axis": {"labelAngle": 0}},
+    "y": {"field": "avg_cool", "type": "quantitative", "title":"Average Cool"}
+  }
+    });
+})
+
+client.action(schema, ["by_holiday", "list"]).then(function(result) {
+    // Return value is in 'result'
+
+    console.log("Result",result);
+
+    vegaEmbed('#vis-h-2', {
+      "$schema": "https://vega.github.io/schema/vega-lite/v3.json",
+      "description": "Average stats per Holiday",
+      "width": 500, "height": 250,
+      "data": {
+         "values": result.results,
+      },
+ "mark": "bar",
+  "encoding": {
+    "x": {"field": "is_holiday", "type": "nominal", "axis": {"labelAngle": 0}},
+    "y": {"field": "avg_stars", "type": "quantitative", "title":"Average Stars"}
+  }
+    });
+})
+
+</script>
+<h3>Aggregation by Date</h3>
+<table>
+    <tr>
+    <td id="vis-d-1" />
+    <td id="vis-d-2" />
+    </tr>
+</table>
+<!--<div id="vis2"></div>-->
+
+<h3>Aggregation by Holiday</h3>
+<div id="vis-h-1" ></div>>
+<div id="vis-h-2" ></div>
+
+
+{% endblock %}
