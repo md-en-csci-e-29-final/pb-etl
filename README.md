@@ -1,20 +1,22 @@
 [![Build Status](https://travis-ci.com/md-en-csci-e-29-final/pb-etl.svg?branch=master)](https://travis-ci.com/md-en-csci-e-29-final/pb-etl)
 [![Maintainability](https://api.codeclimate.com/v1/badges/9d02d0f35d56a317f1c8/maintainability)](https://codeclimate.com/github/md-en-csci-e-29-final/pb-etl/maintainability)
 [![Test Coverage](https://api.codeclimate.com/v1/badges/9d02d0f35d56a317f1c8/test_coverage)](https://codeclimate.com/github/md-en-csci-e-29-final/pb-etl/test_coverage)
-
-## <p style="text-align: center;">Final Project</p>
-### <p style="text-align: center;">Python based ETL Process to support auto renewal rate predicting model</p>
-
-<p style="text-align: center;">Maxim Diatchenko and Evgeny Nenashev</p>
-
 <div style="text-align: center;">
+
+## Final Project
+### Python based ETL Process to support auto renewal rate predicting model
+
+Maxim Diatchenko and Evgeny Nenashev
+
+
 
 ![](harvard.png?style=center)
 
-</div>
 
-<p style="text-align: center;">CSCI E 29 Advanced Python for Data Science</p>
-<p style="text-align: center;">Fall 2020</p>
+CSCI E 29 Advanced Python for Data Science
+Fall 2020
+
+</div>
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
