@@ -3,3 +3,6 @@ omit =
     */tests.py
     */test_*.py
     */*_tests.py
+    */init*.py
+    */*main*.py
+    */*cli*.py
