@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!--
+    Load the CoreAPI library and the API schema.
+
+    /static/rest_framework/js/coreapi-0.1.1.js
+    /docs/schema.js
+-->
+{% load static %}
+<script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+<script src="https://cdn.jsdelivr.net/npm/vega-lite@3"></script>
+<script src="https://cdn.jsdelivr.net/npm/vega-embed@3"></script>
+<script src="{% static 'rest_framework/js/coreapi-0.1.1.js' %}"></script>
+<script src="{% url 'api-docs:schema-js' %}"></script>
+<script type="text/javascript">
+const coreapi = window.coreapi
+const schema = window.schema
+var client = new coreapi.Client()
+
+client.action(schema, ["results", "list"]).then(function(result) {
+    // Return value is in 'result'
+    vegaEmbed('#vis', {
+      "$schema": "https://vega.github.io/schema/vega-lite/v3.json",
+      "description": "Average stats per year",
+      "width": 500, "height": 250,
+      "data": {
+         //"values": result.results,
+         "values": [{"name":"expected", "value":result.results[0].expected},{"name":"actual", "value":result.results[0].actual}]
+      },
+      "mark": {
+        "type": "bar"
+      },
+      "encoding": {
+        "x": {"field": "name", "type": "nominal", "axis": {"labelAngle": 0}},
+        "y": {"field": "value", "type": "quantitative"}
+      }
+    });
+})
+
+</script>
+<h3>Actual vs Forecast</h3>
+<div id="vis"></div>
+
+{% endblock %}

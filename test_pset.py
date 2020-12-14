@@ -231,19 +231,79 @@ class LuigiTester(TestCase):
             )
             self.assertTrue(bck_test_res.output().exists())
 
-
-
             os.chdir(curr_dir)
 
-    # def tearDown(self):
-    #
-    #     files = glob.glob('./local_*/*', recursive=True)
-    #     for f in files:
-    #         os.remove(f)
-    #
-    #     dirs = glob.glob('./local_*')
-    #     for d in dirs:
-    #         os.removedirs(d)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+from pb_etl_app.models import ModelResults
+from datetime import date
+
+import json
+from django.test import TestCase
+from rest_framework import status
+from pb_etl_app.serializers import ResultsSerializer
+
+
+
+class ModelTestCase(TestCase):
+    def setUp(self):
+        ModelResults.objects.create(expected=0.5, actual=0.6)
+
+    def test_ModelTestCase_django_case(self):
+        """
+        Test users being added to the database correctly + simple operations
+        """
+        results = ModelResults.objects.get()
+
+        self.assertEqual(results.expected, 0.5)
+        self.assertEqual(results.actual, 0.6)
+
+    def test_get_views(self):
+        """
+        Test view urls are correct
+        """
+        self.assertEqual(self.client.get("/").status_code, status.HTTP_200_OK)
+        self.assertEqual(self.client.get("/the_app/").status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            self.client.get("/fake").status_code, status.HTTP_404_NOT_FOUND
+        )
+
+    def test_http(self):
+        """
+        Test for CRUD operations
+        """
+        response = self.client.get("/the_app/api/results/")
+        # response.re
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        response = json.loads(response.content.decode("utf-8"))
+        self.assertEqual(response["results"][0]["expected"], 0.5)
+        self.assertEqual(response["results"][0]["actual"], 0.6)
+
+
+class SerializerTestCase(TestCase):
+    def setUp(self):
+        self.res = ModelResults.objects.create(expected=0.5, actual=0.6)
+
+    def test_serializer(self):
+        """
+        Test serialization is correct (and should test deserialization, etc)
+        """
+        ps = ResultsSerializer(self.res)
+        print(ps.data)
+        self.assertEqual(ps.data["expected"], 0.5)
+        self.assertEqual(ps.data["actual"], 0.6)
 
 
 
@@ -262,95 +322,3 @@ class LuigiTester(TestCase):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-#
-# @mock_s3
-# class TestTask(TestCase):
-#     """
-#     Set up data, upload fake data to S3, and test run all tasks
-#     """
-#
-#     bucket = "mock_bucket"
-#
-#     def setUp(self):
-#         # Create fake bucket in S3
-#         self.client_s3 = boto3.client("s3", region_name="us-east-1")
-#         self.client_s3.create_bucket(Bucket=self.bucket)
-#
-#         with tempfile.TemporaryDirectory() as tempdir:
-#         # tempdir = "deleteme"
-#             fake_reviews = fake_data()
-#             for key in fake_reviews:
-#                 f = os.path.join(tempdir, key + "/*.csv")
-#                 fake_reviews[key].to_csv(f)
-#                 dir_name = os.path.join(tempdir, key)
-#                 for the_file in os.listdir(dir_name):
-#                     self.client_s3.upload_file(os.path.join(dir_name, the_file), self.bucket, key + ".csv")
-#
-#             #     print(os.listdir(tempdir))
-#             #     print(self.client_s3.list_objects(Bucket=self.bucket))
-#             #
-#             #
-#             #
-#             # # print(pd.read_csv("s3://" + self.bucket + "/train/attr/trn.csv").head())
-#             #
-#             #
-#             # s3 = boto3.resource('s3')
-#             # bucket = s3.Bucket('mock_bucket')
-#             # # Iterates through all the objects, doing the pagination for you. Each obj
-#             # # is an ObjectSummary, so it doesn't contain the body. You'll need to call
-#             # # get to get the whole body.
-#             # for obj in bucket.objects.all():
-#             #     key = obj.key
-#             #     print(key)
-#             #     body = obj.get()['Body'].read()
-#             #     print(body)
-#             #
-#             #
-#             # raise ValueError
-#             #
-#             # fake_reviews[0].to_csv(fake_path)
-#             # for f in os.listdir(tempdir):
-#             #     self.client_s3.upload_file(
-#             #         os.path.join(tempdir, f), self.bucket, tempdir
-#             #     )
-#
-#     def test_1(self):
-#         # raise ValueError
-#
-#         class MockFinalResults(FinalResults):
-#             """
-#             Create fake S3 Root that contains yelp reviews data
-#             """
-#
-#             def test_yelp_review(self):
-#                 mock_final_results = MockFinalResults()
-#                 build([mock_final_results], local_scheduler=True)
-#                 self.assertTrue(mock_final_results.output().exists())
-#
-#     # def test_cleaned_review(self):
-#     #     """
-#     #     Run MockCleanedReview task to return parquet output
-#     #     :return: parquet file
-#     #     """
-#     #     with tempfile.TemporaryDirectory() as tmpdir:
-#     #         target_path = os.path.join(tmpdir, "CleanedReviews/")
-#     #
-#     #         class MockCleanedReviews(CleanedReviews):
-#     #             output = TargetOutput(
-#     #                 file_pattern=target_path, target_class=ParquetTarget, ext=""
-#     #             )
-#     #
-#     #         mock_cleaned_review = MockCleanedReviews(subset=False)
-#     #         build([mock_cleaned_review], local_scheduler=True)
