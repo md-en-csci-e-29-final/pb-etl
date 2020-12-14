@@ -41,7 +41,7 @@ Fall 2020
 
 The goal of this work is to develop an ETL process for a predictive renewal rate model using our new knowledge and classroom experience. We use Django, LUIGI and DASK. In our new ETL process, we implemented logic to asynchronously collect data from various sources (multiple S3 buckets) and transform it into a training dataset and a forecasting dataset. Then, using tensorflow, we created and fitted the neural network model and performed the prediction. The new process stores the result and model in a local repository. We use Django as our API and graphics framework.
 
-[Here is a video presentation of this work](https://youtu.be/ukdVBMfh3Cc)
+[Here is a video presentation of this work](https://youtu.be/lbRzbn0vWyA)
 
 ### Domain life cycle
 To get an Internet domain, a client must register it in the registry database through a wholesaler. So the registry has no information regarding the end customer.  The registry company uses the classic subscription business model. Customers buy domains for a period of one to ten years. For the Registry  the “purchase” means a subscription to the DNS service for a specific domain name for a certain period.
