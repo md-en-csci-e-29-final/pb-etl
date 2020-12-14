@@ -9,6 +9,8 @@ pytest-cov = "*"
 pytest-runner = "*"
 moto = "*"
 boto3 = "*"
+pytest-django = "*"
+factory-boy = "*"
 
 [packages]
 pandas = "*"
@@ -18,6 +20,16 @@ dask = {extras = ["dataframe"], version = "*"}
 s3fs = "*"
 luigi = "*"
 fastparquet = "*"
+django = "*"
+django-environ = "*"
+djangorestframework = "*"
+django-model-utils = "*"
+argon2-cffi = "*"
+django-allauth = "*"
+django-crispy-forms = "*"
+django-extensions = "*"
+coreapi = "*"
+django-debug-toolbar = "*"
 
 [requires]
 python_version = "3.7"
