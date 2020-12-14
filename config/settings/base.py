@@ -74,7 +74,7 @@ LOCAL_APPS = [
     "pb_etl_django.users.apps.UsersConfig",
     # Your stuff: custom apps go here
     'rest_framework',
-    'pb_etl_app.apps.YelpReviewsConfig',
+    'pb_etl_app.apps.PbEtlConfig',
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS

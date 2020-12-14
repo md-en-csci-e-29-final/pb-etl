@@ -21,7 +21,7 @@ urlpatterns = [
       "the_app/",
       include(("pb_etl_app.urls", "pb_etl_app"), namespace="pb_etl_app"),
     ),
-    path("docs/", include_docs_urls(title="Pset 6 API")),
+    path("docs/", include_docs_urls(title="RR Forecast API")),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 

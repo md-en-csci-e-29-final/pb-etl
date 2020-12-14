@@ -1,5 +1,5 @@
 from django.apps import AppConfig
 
 
-class YelpReviewsConfig(AppConfig):
+class PbEtlConfig(AppConfig):
     name = 'pb_etl_app'

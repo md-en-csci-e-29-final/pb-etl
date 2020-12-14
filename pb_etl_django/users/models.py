@@ -5,7 +5,7 @@ from django.utils.translation import gettext_lazy as _
 
 
 class User(AbstractUser):
-    """Default user for Pset 6."""
+    """Default user """
 
     #: First and last name do not cover name patterns around the globe
     name = CharField(_("Name of User"), blank=True, max_length=255)
