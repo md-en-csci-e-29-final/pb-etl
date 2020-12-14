@@ -38,9 +38,10 @@ class Command(BaseCommand):
         print(res_df)
         print("==============================")
 
-        result_records = [ModelResults(expected=res_df["TARGET"],
-                                     actual=res_df["Y_hat"])]
+        result_records = [ModelResults(expected=res_df["Y_hat"],
+                                     actual=res_df["TARGET"])]
 
+        ModelResults.objects.all().delete()
         ModelResults.objects.bulk_create(result_records)
 
         # date_dim_records = [
