@@ -233,15 +233,6 @@ class LuigiTester(TestCase):
 
             os.chdir(curr_dir)
 
-    # def tearDown(self):
-    #
-    #     files = glob.glob('./local_*/*', recursive=True)
-    #     for f in files:
-    #         os.remove(f)
-    #
-    #     dirs = glob.glob('./local_*')
-    #     for d in dirs:
-    #         os.removedirs(d)
 
 
 
@@ -253,6 +244,66 @@ class LuigiTester(TestCase):
 
 
 
+
+
+
+from pb_etl_app.models import ModelResults
+from datetime import date
+
+import json
+from django.test import TestCase
+from rest_framework import status
+from pb_etl_app.serializers import ResultsSerializer
+
+
+
+class ModelTestCase(TestCase):
+    def setUp(self):
+        ModelResults.objects.create(expected=0.5, actual=0.6)
+
+    def test_ModelTestCase_django_case(self):
+        """
+        Test users being added to the database correctly + simple operations
+        """
+        results = ModelResults.objects.get()
+
+        self.assertEqual(results.expected, 0.5)
+        self.assertEqual(results.actual, 0.6)
+
+    def test_get_views(self):
+        """
+        Test view urls are correct
+        """
+        self.assertEqual(self.client.get("/").status_code, status.HTTP_200_OK)
+        self.assertEqual(self.client.get("/the_app/").status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            self.client.get("/fake").status_code, status.HTTP_404_NOT_FOUND
+        )
+
+    def test_http(self):
+        """
+        Test for CRUD operations
+        """
+        response = self.client.get("/the_app/api/results/")
+        # response.re
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        response = json.loads(response.content.decode("utf-8"))
+        self.assertEqual(response["results"][0]["expected"], 0.5)
+        self.assertEqual(response["results"][0]["actual"], 0.6)
+
+
+class SerializerTestCase(TestCase):
+    def setUp(self):
+        self.res = ModelResults.objects.create(expected=0.5, actual=0.6)
+
+    def test_serializer(self):
+        """
+        Test serialization is correct (and should test deserialization, etc)
+        """
+        ps = ResultsSerializer(self.res)
+        print(ps.data)
+        self.assertEqual(ps.data["expected"], 0.5)
+        self.assertEqual(ps.data["actual"], 0.6)
 
 
 
